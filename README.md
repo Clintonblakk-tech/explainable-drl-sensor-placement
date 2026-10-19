@@ -1,39 +1,124 @@
-# Explainable Deep Reinforcement Learning for Optimal Sensor Placement in Water Distribution Networks
+# Explainable Deep Reinforcement Learning for Sensor Placement in Water Distribution Networks
 
-This repository contains the official implementation of an Explainable Deep Reinforcement Learning (X-DRL) framework optimized for adaptive sensor placement within benchmark Water Distribution Networks (WDNs). 
+**Research manuscript:** Explainable Deep Reinforcement Learning for Sensor Placement in Water Distribution Networks: A Benchmark-Based Evaluation
 
-By utilizing an action-masked Deep Q-Network (DQN) architecture, the agent optimizes multi-objective engineering constraints under a strict fiscal deployment budget.
+## 1. Overview
 
-## Core Architectural Features
+This repository contains the source code and experimental configuration for a graph-based Deep Q-Network (DQN) framework for sensor placement in water distribution networks.
 
-*   **Decoupled State Space Formulation:** The state vector $s_t$ is restricted to a compact binary allocation grid $s_t \in \{0, 1\}^N$, eliminating streaming hydraulic solver overhead during policy selection.
-*   **Algorithmic Action-Masking Layer:** Prevents duplicate sensor placement allocations by mapping a dynamic binary constraint mask vector $m_t \in \{0, 1\}^N$ directly to the Q-network policy layer, forcing invalid action probabilities to collapse to $-\infty$.
-*   **Game-Theoretic Policy Transparency:** Post-hoc interpretability is achieved via a localized SHAP (SHapley Additive exPlanations) framework, mapping structural features to model decision transparency.
+The study investigates how deep reinforcement learning can support the selection of sensor locations by combining graph-distance coverage and degree centrality in a multi-objective reward function. SHAP is used for post-hoc analysis of the learned policy.
 
----
+The framework is evaluated using three benchmark water distribution networks:
 
-## Repository Structure
+- Hanoi
+- Net3
+- C-Town
+
+The experimental design examines sensor placement, optimisation performance, computational requirements, and the interpretation of the learned policy.
+
+## 2. Research Objectives
+
+The experiment addresses four principal objectives:
+
+1. Develop a DQN-based approach for optimising sensor placement in water distribution networks.
+2. Evaluate the effect of sensor budget on DQN optimisation performance.
+3. Examine the computational burden associated with increasing the sensor budget.
+4. Investigate the interpretability of the learned placement policy using SHAP.
+
+Contamination and leak detection are treated as separate engineering evaluation tasks rather than components of the DQN training reward.
+
+## 3. Principal Experimental Configuration
+
+The principal DQN experiments use the following network-specific configurations.
+
+| Benchmark network | Sensor budget | Random seeds | Training episodes per run |
+|---|---:|---:|---:|
+| Hanoi | 3 | 1–10 | 1,000 |
+| Net3 | 5 | 1–10 | 1,000 |
+| C-Town | 10 | 1–10 | 1,000 |
+
+Each network is evaluated using ten random seeds to examine variation in optimisation performance.
+
+### 3.1 DQN configuration
+
+The principal configuration uses a deep Q-network with three hidden layers containing 128, 64, and 32 neurons, respectively, with ReLU activations and a linear output layer.
+
+The principal training parameters are:
+
+| Parameter | Value |
+|---|---:|
+| Training episodes | 1,000 |
+| Random seeds | 10 |
+| Hidden-layer architecture | 128–64–32 |
+| Learning rate | 0.0005 |
+| Discount factor | 0.99 |
+| Replay-buffer capacity | 50,000 |
+| Batch size | 64 |
+| Initial exploration rate | 1.0 |
+| Minimum exploration rate | 0.01 |
+| Exploration decay factor | 0.995 |
+| Target-network update interval | 100 episodes |
+
+### 3.2 Reward formulation
+
+The DQN agent is trained using a weighted reward function:
+
+`R = 0.70 × C + 0.30 × H`
+
+where:
+
+- `C` represents graph-distance coverage.
+- `H` represents the mean degree centrality of the selected sensor locations.
+
+Coverage is evaluated using a two-hop graph-distance criterion. A network node is considered covered when it is within two graph edges of at least one selected sensor.
+
+The coverage measure is topological rather than hydraulic. Contamination and leak-detection outcomes are not included in the training reward.
+
+## 4. Experimental Evaluation
+
+The experiments examine the following aspects of the proposed framework.
+
+### 4.1 Sensor-placement optimisation
+
+DQN training is evaluated using the best reward achieved during training and the final reward. Results are summarised across the ten random seeds for each benchmark network.
+
+### 4.2 Sensor-budget sensitivity
+
+Additional experiments examine the effect of changing the number of sensors on optimisation performance.
+
+The sensor-budget configurations are:
+
+| Benchmark network | Sensor budgets |
+|---|---|
+| Hanoi | 2, 3, and 5 sensors |
+| Net3 | 3, 5, and 8 sensors |
+| C-Town | 5, 10, and 15 sensors |
+
+Paired comparisons across matched random seeds are used to evaluate changes in optimisation reward between adjacent sensor budgets.
+
+### 4.3 Computational performance
+
+Training runtime is examined across the benchmark networks and sensor-budget configurations to assess how computational requirements change as the number of selected sensors increases.
+
+### 4.4 Explainability analysis
+
+SHAP is used to investigate the contribution of input features to the learned DQN policy. The analysis includes comparisons between SHAP-based feature rankings and policy-validation rankings.
+
+The SHAP analysis is post hoc and concerns the model's learned allocation policy. It is not interpreted as evidence of hydraulic causality.
+
+### 4.5 Engineering evaluation
+
+Contamination and leak-detection tasks are considered separately from the graph-based training objective. This distinction allows optimisation performance to be discussed separately from engineering detection performance.
+
+## 5. Repository Structure
 
 ```text
-├── README.md               # Execution guidelines and project documentation
-├── requirements.txt         # Minimal dependency tracking file
-└── src/
-    ├── environment.py       # Custom multi-objective WDN environment wrapper
-    ├── dqn_agent.py         # Action-masked Deep Q-Network implementation
-    ├── train.py             # Execution pipeline for policy optimization
-    └── explain_policy.py    # Post-hoc game-theoretic interpretability engine
-Installation & Setup
-Clone the repository directly to your workspace:
-git clone [https://github.com/Clintonblakk-tech/explainable-drl-sensor-placement.git](https://github.com/Clintonblakk-tech/explainable-drl-sensor-placement.git)
-cd explainable-drl-sensor-placement
-Install the necessary mathematical modeling, deep learning, and interpretability dependencies:
-pip install -r requirements.txt
-Execution Guidelines
-1. Training the Optimization Agent
-To initiate the training pipeline on a specific network benchmark configuration (e.g., net3, hanoi, or ctown), execute the core orchestration script:
-python src/train.py --network net3 --episodes 500
-Generating Game-Theoretic Interpretability Profiles (SHAP)
-To evaluate model decisions and extract localized hydraulic feature attributions, run the post-hoc explanation module:
-python src/explain_policy.py --network net3
-Code and Data Availability
-All custom environment configurations, structural frameworks, and core execution scripts developed for this study are fully available in this repository. Benchmark network hydraulic properties are simulated utilizing the standard WNTR framework interfaces.
+explainable-drl-sensor-placement/
+├── networks/
+├── src/
+│   ├── dqn_agent.py
+│   ├── environment.py
+│   ├── explain_policy.py
+│   └── train.py
+├── README.md
+└── requirements.txt
