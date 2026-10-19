@@ -1,64 +1,20 @@
-import argparse
-import numpy as np
-import torch
-from environment import WaterDistributionEnv
+"""Run one new DQN training experiment. New runs are not historical results."""
+import argparse,csv,json,random,sys,time
+from pathlib import Path
+import numpy as np, torch
+ROOT=Path(__file__).resolve().parents[1]; sys.path.insert(0,str(Path(__file__).parent))
+from environment import SensorPlacementEnvironment
 from dqn_agent import DQNAgent
-
-def train_pipeline(network_name, total_episodes, batch_size=32):
-    print(f"Initializing optimization training loop on network benchmark: {network_name.upper()}")
-    
-    # Initialize environment wrapper and map dimensional boundaries
-    env = WaterDistributionEnv(network_name=network_name, max_sensors=5)
-    state_dim = env.state_dim
-    action_dim = env.action_dim
-    
-    # Instantiate action-masked DQN optimization agent
-    agent = DQNAgent(state_dim=state_dim, action_dim=action_dim)
-    
-    for episode in range(1, total_episodes + 1):
-        state, action_mask = env.reset()
-        episode_reward = 0
-        done = False
-        
-        while not done:
-            # Action selection enforced by algorithmic safety action masking
-            action = agent.act(state, action_mask)
-            
-            # Step inside hydraulic simulation boundary
-            next_state, reward, done, next_mask = env.step(action)
-            
-            # Record trajectory inside experience replay buffer memory
-            agent.remember(state, action, reward, next_state, float(done), next_mask)
-            
-            state = next_state
-            action_mask = next_mask
-            episode_reward += reward
-            
-            # Execute background training optimization step
-            agent.replay(batch_size)
-            
-        # Periodically update stable target network parameters
-        if episode % 10 == 0:
-            agent.update_target_network()
-            
-        if episode % 50 == 0 or episode == 1:
-            print(f"Episode: {episode}/{total_episodes} | Cumulative Reward: {episode_reward:.2f} | Exploration (Epsilon): {agent.epsilon:.3f}")
-            
-    print(f"Optimized layout training complete. Saving policy weights to model checkpoints...")
-    # Save trained network state dictionary weights for downstream post-hoc evaluation and SHAP analysis
-    torch.save(agent.model.state_dict(), f"src/dqn_{network_name}_policy.pt")
-    print("Policy weights saved successfully!")
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="X-DRL Optimization Engine for Sensor Placement Optimization.")
-    parser.add_argument("--network", type=str, default="net3", help="Target benchmark network configuration (hanoi, net3, ctown).")
-    parser.add_argument("--episodes", type=str, default="500", help="Total operational episodes for policy optimization.")
-    
-    args = parser.parse_args()
-    
-    try:
-        ep_count = int(args.episodes)
-    except ValueError:
-        ep_count = 500
-        
-    train_pipeline(network_name=args.network, total_episodes=ep_count)
+FILES={"Hanoi":ROOT/"networks"/"Hanoi.inp","Net3":ROOT/"networks"/"Net3.inp","C-Town":ROOT/"networks"/"C-Town.inp"}; BUDGETS={"Hanoi":3,"Net3":5,"C-Town":10}
+def main():
+ p=argparse.ArgumentParser(); p.add_argument('--network',choices=FILES,required=True); p.add_argument('--episodes',type=int,default=1000); p.add_argument('--seed',type=int,default=1); p.add_argument('--budget',type=int); p.add_argument('--outdir',type=Path,default=ROOT/'results'/'new_runs'); a=p.parse_args(); budget=a.budget or BUDGETS[a.network]
+ random.seed(a.seed); np.random.seed(a.seed); torch.manual_seed(a.seed); env=SensorPlacementEnvironment(FILES[a.network],budget); agent=DQNAgent(len(env.nodes),len(env.nodes)); rows=[]; best=-float('inf'); start=time.perf_counter(); last_info={}
+ for ep in range(a.episodes):
+  state=env.reset(); done=False; total=0.0
+  while not done:
+   action=agent.act(state,env.valid_actions()); ns,r,done,info=env.step(action); agent.remember((state.copy(),action,r,ns.copy(),done)); agent.update(); state=ns; total+=r; last_info=info
+  best=max(best,total); rows.append({'episode':ep+1,'episode_reward':total,'epsilon':agent.epsilon}); agent.finish_episode(ep)
+ elapsed=time.perf_counter()-start; a.outdir.mkdir(parents=True,exist_ok=True); stem=f"{a.network.replace('-','_')}_budget{budget}_seed{a.seed}"
+ with (a.outdir/f'{stem}_episode_history.csv').open('w',newline='',encoding='utf-8') as f: w=csv.DictWriter(f,fieldnames=rows[0]); w.writeheader(); w.writerows(rows)
+ torch.save(agent.online.state_dict(),a.outdir/f'{stem}_qnetwork.pth'); summary={'network':a.network,'budget':budget,'seed':a.seed,'episodes':a.episodes,'best_episode_return':best,'final_episode_return':rows[-1]['episode_reward'],'runtime_seconds':elapsed,'final_episode_nodes':last_info.get('selected_nodes',[]),'status':'new run; not a historical run reconstruction'}; (a.outdir/f'{stem}_summary.json').write_text(json.dumps(summary,indent=2)); print(json.dumps(summary,indent=2))
+if __name__=='__main__': main()
