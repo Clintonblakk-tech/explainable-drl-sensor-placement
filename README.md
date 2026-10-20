@@ -52,26 +52,31 @@ Ten random seeds are used for each network to examine variability in optimisatio
 
 These are the principal benchmark configurations. Additional sensor-budget sensitivity experiments use different budgets and are described separately in Section 4.2.
 
-3.1 DQN configuration
+### 3.1 DQN configuration
 
-The principal DQN architecture consists of three hidden layers containing 128, 64, and 32 neurons, respectively. ReLU activation functions are used in the hidden layers, with a linear output layer.
+The DQN architecture consists of three hidden layers containing 128, 64, and 32 neurons, respectively, with ReLU activation functions and a linear output layer.
 
-The documented principal training parameters are:
+The principal training parameters implemented in the public repository are:
 
-Parameter	Value
-Training episodes per run	1,000
-Random seeds	10
-Hidden-layer architecture	128–64–32
-Learning rate	0.0005
-Discount factor	0.99
-Replay-buffer capacity	50,000
-Batch size	64
-Initial exploration rate	1.0
-Minimum exploration rate	0.01
-Exploration decay factor	0.995
-Target-network update interval	100 episodes
+| Parameter | Value |
+|---|---:|
+| Training episodes per run | 1,000 (default) |
+| Random seed | 1 (default in the training script) |
+| Hidden-layer architecture | 128–64–32 |
+| Learning rate | 0.0005 |
+| Discount factor | 0.99 |
+| Replay-buffer capacity | 50,000 |
+| Batch size | 64 |
+| Initial exploration rate | 1.0 |
+| Minimum exploration rate | 0.01 |
+| Exploration decay factor | 0.995 |
+| Target-network update interval | 100 episodes |
 
-These values describe the principal configuration documented for the study. Individual experimental scripts may implement different settings for specific analyses; the configuration associated with each reported experiment should therefore be checked against its corresponding script and retained run records.
+The training script accepts a network, number of episodes, random seed, and optional sensor budget as command-line arguments. It runs one training experiment per invocation; the ten-seed benchmark requires separate runs with the corresponding seeds.
+
+The implementation updates the target network by copying the online network parameters every 100 episodes. The replay buffer and target network can be enabled or disabled through the DQN agent configuration.
+
+These settings describe the current public implementation. They should not be assumed to reproduce every historical experiment unless the relevant configuration and outputs have been independently verified.
 
 3.2 Reward formulation
 
@@ -130,16 +135,13 @@ The analysis investigates how recorded computational requirements change as the 
 
 Runtime comparisons should be interpreted within the context of the evaluated implementations, hardware, training configuration, and experimental conditions. They do not automatically establish general computational-complexity advantages over other optimisation methods.
 
-4.4 Explainability analysis
+### 4.4 Explainability analysis
 
-SHAP is used to investigate the contribution of input features to the learned DQN policy.
+The wider research project uses SHAP for post-hoc analysis of the learned DQN policy. The analysis investigates the contribution of binary sensor-allocation state features to model outputs. It does not establish hydraulic causality or directly explain physical variables such as pressure, demand, or contaminant concentration.
 
-The analysis includes comparisons between SHAP-based feature rankings and policy-validation rankings.
+The current public repository includes `src/explain_policy.py` as a placeholder command-line entry point. This file does not currently execute SHAP calculations or regenerate the historical manuscript results.
 
-The results are interpreted as post-hoc explanations of the model's learned allocation policy. They are not treated as evidence of hydraulic causality, contaminant-transport mechanisms, or universally optimal engineering priorities.
-
-The stability and agreement of feature rankings are relevant when interpreting the findings. Differences between rankings should be reported rather than assuming that the explanations consistently identify the same important nodes.
-
+Consequently, the historical SHAP findings should be interpreted using the analysis and evidence documented in the research manuscript. Reproducing those findings from the public repository requires implementation of the approved SHAP analysis procedure and access to the appropriate model checkpoints and valid sampled states.
 4.5 Engineering evaluation
 
 Contamination and leak detection are evaluated separately from the graph-based training objective.
