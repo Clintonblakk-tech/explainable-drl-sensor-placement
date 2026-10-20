@@ -288,3 +288,5 @@ Please distinguish results obtained from this public implementation from results
 Before redistributing the benchmark input files or specifying a repository license, verify the applicable permissions and licensing conditions.
 
 A repository license should only be added when the repository owner has confirmed the rights to license the included code and data.
+## Section 14
+This is a draft availability statement based on the repository structure and implementation we reviewed. It does not independently establish that the repository has been executed successfully or that all historical experimental artefacts are available.
